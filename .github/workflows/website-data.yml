@@ -8,8 +8,8 @@ on:
         required: true
         type: choice
         options:
-          - "immediate-trader.org"
-          - "trackinggate.pro"
+          - immediate-trader.org
+          - trackinggate.pro
 
 jobs:
   process-website:
