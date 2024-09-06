@@ -43,20 +43,130 @@ jobs:
             exit 1
           fi
 
-      - name: Create new folder and copy contents
-        run: |
-          mkdir -p ${{ env.REPO_NAME }}
-          cp -r templates/${{ github.event.inputs.site }}/* ${{ env.REPO_NAME }}/
-        shell: bash
+      - name: Install dependencies
+        run: npm install @octokit/rest simple-git
 
-      - name: Run repository setup
+      - name: Clean up unnecessary files and set up project
         run: |
-          chmod +x ./scripts/repo_setup.sh
-          ./scripts/repo_setup.sh ${{ env.REPO_NAME }} ${{ secrets.PAT_TOKEN }}
-        shell: bash
+          node -e "
+            const { Octokit } = require('@octokit/rest');
+            const simpleGit = require('simple-git');
+            const fs = require('fs');
+            const path = require('path');
 
-      - name: Run Pages setup
+            const REPO_NAME = process.env.REPO_NAME;
+            const DOMAIN = REPO_NAME;
+            const TOKEN = process.env.GITHUB_PAT;
+            const GITHUB_OWNER = 'richardbizzz';
+
+            const octokit = new Octokit({ auth: TOKEN });
+            const git = simpleGit();
+
+            async function setGitHubPages() {
+              try {
+                console.log('Setting up GitHub Pages for repository:', REPO_NAME);
+                await octokit.repos.updateInformationAboutPagesSite({
+                  owner: GITHUB_OWNER,
+                  repo: REPO_NAME,
+                  source: { branch: 'main', path: '/' },
+                });
+                console.log('GitHub Pages configured successfully.');
+              } catch (err) {
+                console.error('Error setting up GitHub Pages:', err);
+              }
+            }
+
+            async function createCNAMEFile() {
+              try {
+                const cnamePath = path.join(__dirname, 'CNAME');
+                fs.writeFileSync(cnamePath, DOMAIN);
+                console.log('CNAME file created with domain:', DOMAIN);
+                await git.add('./*');
+                await git.commit('Add CNAME file for GitHub Pages');
+                await git.push('origin', 'main');
+                console.log('CNAME file pushed to repository.');
+              } catch (err) {
+                console.error('Error creating or pushing CNAME file:', err);
+              }
+            }
+
+            async function setupRepository() {
+              try {
+                console.log('Setting up repository:', REPO_NAME);
+                const repo = await octokit.repos.get({ owner: GITHUB_OWNER, repo: REPO_NAME });
+                if (repo) {
+                  console.log('Repository exists. Cloning repository...');
+                  await git.clone(`https://github.com/${GITHUB_OWNER}/${REPO_NAME}.git`);
+                  process.chdir(REPO_NAME);
+                  await git.addConfig('user.name', 'GitHub Actions');
+                  await git.addConfig('user.email', 'actions@github.com');
+                  console.log('Repository setup complete.');
+                } else {
+                  console.log('Repository does not exist.');
+                }
+              } catch (err) {
+                console.error('Error setting up repository:', err);
+              }
+            }
+
+            (async () => {
+              await setupRepository();
+              await createCNAMEFile();
+              await setGitHubPages();
+            })();
+          "
+        env:
+          GITHUB_PAT: ${{ secrets.PAT_TOKEN }}
+
+      - name: Create and push the deploy workflow
         run: |
-          chmod +x ./scripts/pages_setup.sh
-          ./scripts/pages_setup.sh ${{ env.REPO_NAME }} ${{ secrets.PAT_TOKEN }} ${{ env.REPO_NAME }}
-        shell: bash
+          WORKFLOW_FILE=".github/workflows/deploy-pages.yml"
+
+          mkdir -p $(dirname "$WORKFLOW_FILE")
+
+          cat <<EOF > $WORKFLOW_FILE
+          name: Deploy static content to Pages
+
+          on:
+            push:
+              branches: ["main"]
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+            pages: write
+            id-token: write
+
+          concurrency:
+            group: "pages"
+            cancel-in-progress: false
+
+          jobs:
+            deploy:
+              environment:
+                name: github-pages
+                url: \${{ steps.deployment.outputs.page_url }}
+              runs-on: ubuntu-latest
+              steps:
+                - name: Checkout
+                  uses: actions/checkout@v4
+
+                - name: Setup Pages
+                  uses: actions/configure-pages@v5
+
+                - name: Set custom domain
+                  run: echo "$DOMAIN" > CNAME
+
+                - name: Upload artifact
+                  uses: actions/upload-pages-artifact@v3
+                  with:
+                    path: '.'
+
+                - name: Deploy to GitHub Pages
+                  id: deployment
+                  uses: actions/deploy-pages@v4
+          EOF
+
+          git add $WORKFLOW_FILE
+          git commit -m "Add deploy workflow for GitHub Pages"
+          git push origin main
