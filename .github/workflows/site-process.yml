@@ -1,0 +1,56 @@
+name: Site Process
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Select the site to process
+        required: true
+        type: string
+        options:
+          - immediate-trader.org
+          - trackinggate.pro
+
+jobs:
+  create-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'lts/*'
+
+      - name: Generate random string for repo name
+        id: random_string
+        run: |
+          echo "RANDOM_STRING=$(node -e 'console.log(Math.random().toString(36).substring(2, 8))')" >> $GITHUB_ENV
+
+      - name: Create new folder and copy contents
+        run: |
+          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
+          mkdir $REPO_NAME
+          cp -r templates/${{ github.event.inputs.site }}/* $REPO_NAME/
+        shell: bash
+
+      - name: Create GitHub repository
+        run: |
+          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
+          curl -H "Authorization: token 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" \
+               -d '{"name": "'"$REPO_NAME"'"}' \
+               https://api.github.com/user/repos
+
+      - name: Initialize and push to repository
+        run: |
+          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
+          cd $REPO_NAME
+          git init
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote add origin https://x-access-token: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@github.com/${{ github.repository_owner }}/$REPO_NAME.git
+          git add .
+          git commit -m "Initial commit for $REPO_NAME"
+          git branch -M main
+          git push -u origin main

@@ -1,0 +1,35 @@
+name: Website Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Select the site to process
+        required: true
+        type: string
+        options:
+          - "immediate-trader.org"
+          - "trackinggate.pro"
+
+jobs:
+  process-website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'lts/*'  # Use the latest Node.js LTS version
+      - name: Install dependencies
+        run: npm install
+      - name: Run website-data.js
+        run: node scripts/website-data.js --site ${{ github.event.inputs.site }}
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add .
+          git commit -m "Process site: ${{ github.event.inputs.site }}"
+          git push
+        continue-on-error: true

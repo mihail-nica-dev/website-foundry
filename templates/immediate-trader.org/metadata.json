@@ -1,0 +1,7 @@
+{
+    "url":"https://immediate-trader.org",
+    "replacements": {
+        "/": "/" 
+    },
+    "newUrl": "tradingrobot.store"
+}
