@@ -36,7 +36,7 @@ workflowFiles.forEach(workflowFileName => {
                         site: {
                             description: 'Select the site to process',
                             required: true,
-                            type: 'string',
+                            type: 'choice',
                             options: directories,
                         }
                     }
