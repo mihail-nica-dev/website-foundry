@@ -75,7 +75,7 @@ jobs:
           git init
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/${{ env.REPO_NAME }}.git
+          git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/richardbizzz/${{ env.REPO_NAME }}.git
           git add .
           git commit -m "Initial commit for ${{ env.REPO_NAME }}"
           git branch -M main
@@ -86,8 +86,8 @@ jobs:
           curl -X PATCH \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository_owner }}/${{ env.REPO_NAME }}/pages \
-            -d '{"cname": "'"${{ env.REPO_NAME }}"'"}'
+            https://api.github.com/repos/richardbizzz/${{ env.REPO_NAME }}/pages \
+            -d '{"cname": "'"${{ env.REPO_NAME }}"', "source": {"branch": "main", "path": "."}}'
 
       - name: Add CNAME file for GitHub Pages
         run: |
@@ -99,3 +99,27 @@ jobs:
           git add CNAME
           git commit -m "Add CNAME file for GitHub Pages"
           git push
+
+      - name: Update repository description
+        run: |
+          DESCRIPTION="GitHub Pages Domain: ${{ env.REPO_NAME }}, New URL: ${{ env.REPO_NAME }}"
+          echo "Updating repository description to: $DESCRIPTION"
+
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/richardbizzz/${{ env.REPO_NAME }} \
+            -d '{"description": "'"$DESCRIPTION"'"}'
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    needs: create-repo
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and deploy to GitHub Pages
+        run: |
+          git add -A
+          git commit -m "Deploy to GitHub Pages"
+          git push origin main
