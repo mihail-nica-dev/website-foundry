@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const templatesDir = path.join(__dirname, 'templates');
-const baseUrl = 'https://mihail-nica-dev.github.io/templates/templates'; 
+const templatesDir = path.join(__dirname, "..", 'templates');
+const baseUrl = 'https://richardbizzz.github.io/website-foundry/templates'; 
 
 // Function to generate the list of templates with URLs
 function generateTemplateList() {
