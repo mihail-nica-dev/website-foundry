@@ -38,7 +38,7 @@ jobs:
       - name: Create GitHub repository
         run: |
           REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
-          curl -H "Authorization: token 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" \
+          curl -H "Authorization: token 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" \
                -d '{"name": "'"$REPO_NAME"'"}' \
                https://api.github.com/user/repos
 
@@ -49,7 +49,7 @@ jobs:
           git init
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote add origin https://x-access-token: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@github.com/${{ github.repository_owner }}/$REPO_NAME.git
+          git remote add origin https://x-access-token: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@github.com/${{ github.repository_owner }}/$REPO_NAME.git
           git add .
           git commit -m "Initial commit for $REPO_NAME"
           git branch -M main
