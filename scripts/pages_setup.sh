@@ -11,10 +11,10 @@ set_github_pages() {
     # Use GitHub API to set the GitHub Pages branch and path
     curl -X PATCH \
         -H "Authorization: token $PAT_TOKEN" \
-        -H "Accept: application/vnd.github.v3+json" \
+        -H "Accept: application/vnd.github+json" \
         https://api.github.com/repos/${GITHUB_OWNER}/${REPO_NAME}/pages \
-        -d '{"cname": "'"${REPO_NAME}"'", "source": {"branch": "main", "path": "."}}'
-    
+        -d '{"source": {"branch": "main", "path": "/"}}'
+
     echo "GitHub Pages set for $REPO_NAME"
 }
 
@@ -46,7 +46,7 @@ update_repo_description() {
     # Update repository description via GitHub API
     curl -X PATCH \
         -H "Authorization: token $PAT_TOKEN" \
-        -H "Accept: application/vnd.github.v3+json" \
+        -H "Accept: application/vnd.github+json" \
         https://api.github.com/repos/${GITHUB_OWNER}/${REPO_NAME} \
         -d '{"description": "'"$DESCRIPTION"'"}'
 
