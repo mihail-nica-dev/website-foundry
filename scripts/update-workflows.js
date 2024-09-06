@@ -3,8 +3,8 @@ const path = require('path');
 const yaml = require('js-yaml');
 
 // Paths for workflow files and templates directory
-const workflowsDir = path.join(__dirname,'..', '.github', 'workflows');
-const templatesDir = path.join(__dirname,'..', 'templates');
+const workflowsDir = path.join(__dirname, '..', '.github', 'workflows');
+const templatesDir = path.join(__dirname, '..', 'templates');
 const workflowFiles = ['site-process.yml', 'website-data.yml'];
 
 // Ensure the workflows directory exists
@@ -22,8 +22,8 @@ if (directories.length === 0) {
     process.exit(1);
 }
 
-// Create or update each workflow file
-workflowFiles.forEach(workflowFileName => {
+// Function to create or update workflow files
+const processWorkflowFile = (workflowFileName) => {
     const workflowFilePath = path.join(workflowsDir, workflowFileName);
 
     // If the file doesn't exist, create a base workflow structure
@@ -37,12 +37,12 @@ workflowFiles.forEach(workflowFileName => {
                             description: 'Select the site to process',
                             required: true,
                             type: 'choice',
-                            options: directories,
+                            options: directories,  // Populate with the directories
                         }
                     }
                 }
             },
-            jobs: {}  // You can define default jobs here if needed
+            jobs: {}  // Define default jobs here if necessary
         };
 
         const workflowContent = yaml.dump(baseWorkflow);
@@ -68,4 +68,9 @@ workflowFiles.forEach(workflowFileName => {
         fs.writeFileSync(workflowFilePath, workflowContent, 'utf8');
         console.log(`Updated the workflow options in: ${workflowFilePath}`);
     }
+};
+
+// Process each workflow file in the list
+workflowFiles.forEach(workflowFileName => {
+    processWorkflowFile(workflowFileName);
 });
