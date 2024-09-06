@@ -176,4 +176,4 @@ jobs:
 
           git add $WORKFLOW_FILE
           git commit -m "Add deploy workflow for GitHub Pages"
-          git push origin main
+          git push https://${{ secrets.PAT_TOKEN }}@github.com/richardbizzz/website-foundry.git main
