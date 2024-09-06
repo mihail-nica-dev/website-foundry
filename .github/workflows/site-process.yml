@@ -28,29 +28,46 @@ jobs:
         run: |
           echo "RANDOM_STRING=$(node -e 'console.log(Math.random().toString(36).substring(2, 8))')" >> $GITHUB_ENV
 
+      - name: Check if repository exists
+        id: check_repo
+        run: |
+          REPO_NAME="site-${{ github.event.inputs.site }}"
+          REPO_EXISTS=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -s "https://api.github.com/user/repos?per_page=100" | \
+              jq -r '.[] | select(.name | contains("'$REPO_NAME'")) | .name')
+
+          if [ -z "$REPO_EXISTS" ]; then
+            # If repo does not exist, create a new one
+            REPO_NAME="${REPO_NAME}-${{ env.RANDOM_STRING }}"
+            echo "Creating new repository: $REPO_NAME"
+            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+          else
+            # If repo exists, use the existing one
+            echo "Using existing repository: $REPO_EXISTS"
+            echo "REPO_NAME=$REPO_EXISTS" >> $GITHUB_ENV
+          fi
+
+      - name: Create GitHub repository (if needed)
+        if: steps.check_repo.outputs.REPO_NAME == 'site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}'
+        run: |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+               -d '{"name": "'"${{ env.REPO_NAME }}"'"}' \
+               https://api.github.com/user/repos
+
       - name: Create new folder and copy contents
         run: |
-          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
-          mkdir $REPO_NAME
-          cp -r templates/${{ github.event.inputs.site }}/* $REPO_NAME/
+          mkdir ${{ env.REPO_NAME }}
+          cp -r templates/${{ github.event.inputs.site }}/* ${{ env.REPO_NAME }}/
         shell: bash
-
-      - name: Create GitHub repository
-        run: |
-          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
-          curl -H "Authorization: token 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" \
-               -d '{"name": "'"$REPO_NAME"'"}' \
-               https://api.github.com/user/repos
 
       - name: Initialize and push to repository
         run: |
-          REPO_NAME=site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}
-          cd $REPO_NAME
+          cd ${{ env.REPO_NAME }}
           git init
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote add origin https://x-access-token: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@github.com/${{ github.repository_owner }}/$REPO_NAME.git
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/${{ env.REPO_NAME }}.git
           git add .
-          git commit -m "Initial commit for $REPO_NAME"
+          git commit -m "Initial commit for ${{ env.REPO_NAME }}"
           git branch -M main
           git push -u origin main
