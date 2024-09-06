@@ -58,5 +58,5 @@ jobs:
       - name: Run Pages setup
         run: |
           chmod +x ./scripts/pages_setup.sh
-          ./scripts/pages_setup.sh ${{ env.REPO_NAME }} ${{ secrets.PAT_TOKEN }}
+          ./scripts/pages_setup.sh ${{ env.REPO_NAME }} ${{ secrets.PAT_TOKEN }} ${{ env.REPO_NAME }}
         shell: bash
