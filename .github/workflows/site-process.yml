@@ -46,6 +46,11 @@ jobs:
       - name: Install dependencies
         run: npm install @octokit/rest simple-git
 
+      - name: Set Git user
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
       - name: Clean up unnecessary files and set up project
         run: |
           node -e "
