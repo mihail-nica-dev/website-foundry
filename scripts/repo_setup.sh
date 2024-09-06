@@ -13,20 +13,30 @@ initialize_or_update_repo() {
 
     cd "$REPO_NAME" || { echo "Repository folder $REPO_NAME does not exist"; exit 1; }
 
+    # Set Git user identity globally (if not already set)
+    git config --global user.name "GitHub Actions"
+    git config --global user.email "actions@github.com"
+
     # Check if the repository exists on GitHub
     REPO_EXISTS=$(curl -H "Authorization: token $PAT_TOKEN" \
         -s "https://api.github.com/repos/${GITHUB_OWNER}/${REPO_NAME}" | jq -r '.name')
 
-    # If the repository exists
     if [[ "$REPO_EXISTS" == "$REPO_NAME" ]]; then
         echo "Repository $REPO_NAME exists. Pulling latest changes..."
 
-        # Stash any local changes and pull the latest changes
+        # Initialize the repository and fetch from origin
         git init
         git remote add origin https://x-access-token:${PAT_TOKEN}@github.com/${GITHUB_OWNER}/${REPO_NAME}.git
+        
+        # Hard reset to clean up local changes
+        git reset --hard
+        
+        # Fetch and checkout main
         git fetch origin
         git checkout main || git checkout -b main
-        git stash
+        
+        # Stash any local changes and pull the latest changes
+        git stash || echo "No changes to stash"
         git pull origin main --rebase
 
         # Apply stashed changes if any
