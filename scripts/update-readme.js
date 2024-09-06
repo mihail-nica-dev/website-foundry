@@ -16,7 +16,7 @@ function generateTemplateList() {
 
 // Function to update the README.md file
 function updateReadme(templateList) {
-    const readmePath = path.join(__dirname, 'README.md');
+    const readmePath = path.join(__dirname, '..', 'README.md');
     const readmeContent = fs.readFileSync(readmePath, 'utf8');
     const newContent = readmeContent.replace(
         /<!-- START TEMPLATE LIST -->[\s\S]*<!-- END TEMPLATE LIST -->/,
