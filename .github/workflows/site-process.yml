@@ -22,10 +22,6 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: 'lts/*'
-          
-      - name: Debug metadata.json
-        run: |
-          cat templates/${{ github.event.inputs.site }}/metadata.json
 
       - name: Generate random string for repo name
         id: random_string
@@ -36,17 +32,24 @@ jobs:
         id: check_repo
         run: |
           REPO_NAME="site-${{ github.event.inputs.site }}"
-          REPO_EXISTS=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -s "https://api.github.com/user/repos?per_page=100" | \
-              jq -r '.[] | select(.name | contains("'$REPO_NAME'")) | .name')
+          echo "Checking for existing repositories containing: $REPO_NAME"
+          
+          # Fetch repositories using the GitHub API and PAT
+          RESPONSE=$(curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -s "https://api.github.com/user/repos?per_page=100")
+          
+          # Debug: Output raw API response for troubleshooting
+          echo "Raw API response:"
+          echo "$RESPONSE"
+          
+          # Check for the repository name in the list
+          REPO_EXISTS=$(echo "$RESPONSE" | jq -r '.[] | select(.name | contains("'"$REPO_NAME"'")) | .name')
 
           if [ -z "$REPO_EXISTS" ]; then
-            # If repo does not exist, create a new one
+            echo "No existing repository found. Creating a new one."
             REPO_NAME="${REPO_NAME}-${{ env.RANDOM_STRING }}"
-            echo "Creating new repository: $REPO_NAME"
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
           else
-            # If repo exists, use the existing one
             echo "Using existing repository: $REPO_EXISTS"
             echo "REPO_NAME=$REPO_EXISTS" >> $GITHUB_ENV
           fi
@@ -54,7 +57,7 @@ jobs:
       - name: Create GitHub repository (if needed)
         if: steps.check_repo.outputs.REPO_NAME == 'site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}'
         run: |
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
                -d '{"name": "'"${{ env.REPO_NAME }}"'"}' \
                https://api.github.com/user/repos
 
@@ -70,7 +73,7 @@ jobs:
           git init
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/${{ env.REPO_NAME }}.git
+          git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository_owner }}/${{ env.REPO_NAME }}.git
           git add .
           git commit -m "Initial commit for ${{ env.REPO_NAME }}"
           git branch -M main
@@ -80,13 +83,25 @@ jobs:
         id: extract_domain
         run: |
           METADATA_FILE="templates/${{ github.event.inputs.site }}/metadata.json"
-          NEW_URL=$(jq -r '.newUrl' $METADATA_FILE)
-          echo "NEW_URL=$NEW_URL" >> $GITHUB_ENV
+          if [ -f "$METADATA_FILE" ]; then
+            echo "metadata.json found at $METADATA_FILE"
+            NEW_URL=$(jq -r '.newUrl // empty' $METADATA_FILE)
+            if [ -z "$NEW_URL" ]; then
+              echo "Error: Could not extract newUrl from metadata.json"
+              exit 1
+            else
+              echo "NEW_URL=$NEW_URL"
+              echo "NEW_URL=$NEW_URL" >> $GITHUB_ENV
+            fi
+          else
+            echo "Error: metadata.json not found at $METADATA_FILE"
+            exit 1
+          fi
 
       - name: Set GitHub Pages custom domain
         run: |
           curl -X PATCH \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/${{ env.REPO_NAME }}/pages \
             -d '{"cname": "'"${{ env.NEW_URL }}"'"}'
