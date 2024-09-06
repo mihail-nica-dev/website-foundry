@@ -86,12 +86,14 @@ jobs:
             git branch -M main
             git push -u origin main
           else
-            # If the repository exists, pull the latest changes, commit, and push
+            # If the repository exists, stash changes, pull, and then apply stash
             git init
             git remote add origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/richardbizzz/${{ env.REPO_NAME }}.git
             git fetch origin
             git checkout main || git checkout -b main
+            git stash
             git pull origin main --rebase
+            git stash pop || echo "No stash to apply"
             git add .
             git commit -m "Update for ${{ env.REPO_NAME }}"
             git push origin main
