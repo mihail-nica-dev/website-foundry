@@ -23,39 +23,41 @@ jobs:
         with:
           node-version: 'lts/*'
 
-      - name: Generate random string for repo name
-        id: random_string
+      - name: Extract domain from metadata.json and set repo name
+        id: extract_domain
         run: |
-          echo "RANDOM_STRING=$(node -e 'console.log(Math.random().toString(36).substring(2, 8))')" >> $GITHUB_ENV
+          METADATA_FILE="templates/${{ github.event.inputs.site }}/metadata.json"
+          if [ -f "$METADATA_FILE" ]; then
+            echo "metadata.json found at $METADATA_FILE"
+            NEW_URL=$(jq -r '.newUrl // empty' $METADATA_FILE)
+            if [ -z "$NEW_URL" ]; then
+              echo "Error: Could not extract newUrl from metadata.json"
+              exit 1
+            else
+              REPO_NAME="${NEW_URL}"
+              echo "Repository will be named: $REPO_NAME"
+              echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+            fi
+          else
+            echo "Error: metadata.json not found at $METADATA_FILE"
+            exit 1
+          fi
 
       - name: Check if repository exists
-        id: check_repo
         run: |
-          REPO_NAME="site-${{ github.event.inputs.site }}"
-          echo "Checking for existing repositories containing: $REPO_NAME"
+          echo "Checking if repository ${{ env.REPO_NAME }} exists"
+          REPO_EXISTS=$(curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -s "https://api.github.com/user/repos?per_page=100" | \
+              jq -r '.[] | select(.name == "'"${{ env.REPO_NAME }}"'") | .name')
           
-          # Fetch repositories using the GitHub API and PAT
-          RESPONSE=$(curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-              -s "https://api.github.com/user/repos?per_page=100")
-          
-          # Debug: Output raw API response for troubleshooting
-          echo "Raw API response:"
-          echo "$RESPONSE"
-          
-          # Check for the repository name in the list
-          REPO_EXISTS=$(echo "$RESPONSE" | jq -r '.[] | select(.name | contains("'"$REPO_NAME"'")) | .name')
-
           if [ -z "$REPO_EXISTS" ]; then
-            echo "No existing repository found. Creating a new one."
-            REPO_NAME="${REPO_NAME}-${{ env.RANDOM_STRING }}"
-            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+            echo "Repository ${{ env.REPO_NAME }} does not exist. Creating a new one."
           else
-            echo "Using existing repository: $REPO_EXISTS"
-            echo "REPO_NAME=$REPO_EXISTS" >> $GITHUB_ENV
+            echo "Repository ${{ env.REPO_NAME }} already exists. Reusing it."
           fi
 
       - name: Create GitHub repository (if needed)
-        if: steps.check_repo.outputs.REPO_NAME == 'site-${{ github.event.inputs.site }}-${{ env.RANDOM_STRING }}'
+        if: ${{ env.REPO_NAME }} != ${{ env.REPO_EXISTS }}
         run: |
           curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
                -d '{"name": "'"${{ env.REPO_NAME }}"'"}' \
@@ -79,29 +81,21 @@ jobs:
           git branch -M main
           git push -u origin main
 
-      - name: Extract domain from metadata.json
-        id: extract_domain
-        run: |
-          METADATA_FILE="templates/${{ github.event.inputs.site }}/metadata.json"
-          if [ -f "$METADATA_FILE" ]; then
-            echo "metadata.json found at $METADATA_FILE"
-            NEW_URL=$(jq -r '.newUrl // empty' $METADATA_FILE)
-            if [ -z "$NEW_URL" ]; then
-              echo "Error: Could not extract newUrl from metadata.json"
-              exit 1
-            else
-              echo "NEW_URL=$NEW_URL"
-              echo "NEW_URL=$NEW_URL" >> $GITHUB_ENV
-            fi
-          else
-            echo "Error: metadata.json not found at $METADATA_FILE"
-            exit 1
-          fi
-
       - name: Set GitHub Pages custom domain
         run: |
           curl -X PATCH \
             -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/${{ env.REPO_NAME }}/pages \
-            -d '{"cname": "'"${{ env.NEW_URL }}"'"}'
+            -d '{"cname": "'"${{ env.REPO_NAME }}"'"}'
+
+      - name: Add CNAME file for GitHub Pages
+        run: |
+          echo "${{ env.REPO_NAME }}" > ${{ env.REPO_NAME }}/CNAME
+          
+      - name: Commit and push CNAME for GitHub Pages
+        run: |
+          cd ${{ env.REPO_NAME }}
+          git add CNAME
+          git commit -m "Add CNAME file for GitHub Pages"
+          git push
