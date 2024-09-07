@@ -10,6 +10,7 @@ on:
         options:
           - immediate-trader.org
           - trackinggate.pro
+          - studiobertarelli.it
 
 jobs:
   create-repo:
