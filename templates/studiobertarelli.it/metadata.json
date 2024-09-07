@@ -1,0 +1,7 @@
+{
+    "url":"https://studiobertarelli.it/",
+    "replacements": {
+        "/": "/" 
+    },
+    "newUrl": "geomedil.studio"
+}
