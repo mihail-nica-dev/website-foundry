@@ -7,7 +7,9 @@ This repository contains various website templates for different use cases. Belo
 The following is an automatically generated list of website templates available in this repository:
 
 <!-- START TEMPLATE LIST -->
+- [.DS_Store](https://richardbizzz.github.io/website-foundry/templates/.DS_Store)
 - [immediate-trader.org](https://richardbizzz.github.io/website-foundry/templates/immediate-trader.org)
+- [studiobertarelli.it](https://richardbizzz.github.io/website-foundry/templates/studiobertarelli.it)
 - [trackinggate.pro](https://richardbizzz.github.io/website-foundry/templates/trackinggate.pro)
 <!-- END TEMPLATE LIST -->
 
